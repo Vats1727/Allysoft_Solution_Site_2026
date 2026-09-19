@@ -4,10 +4,15 @@ import { gsap } from "gsap";
 import { initGsap, reveal, depthScrub } from "../lib/engine";
 import OrbitScene from "./OrbitScene";
 import ParallaxLayer from "./ParallaxLayer";
+import { useLandingData } from "../context/LandingDataContext";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
 initGsap();
 
 export default function Hero() {
+  const { data } = useLandingData();
+  const heroData = data?.hero_section?.[0] || {};
+
   const rootRef = useRef(null);
   const headRef = useRef(null);
   const subRef = useRef(null);
@@ -22,9 +27,7 @@ export default function Hero() {
       reveal(ctaRef.current, { y: 20, duration: 0.8, delay: 0.3, start: "top 100%" });
       reveal(sceneWrapRef.current, { x: 60, z: 120, duration: 1.1, delay: 0.2, start: "top 100%" });
       reveal(cueRef.current, { y: 10, duration: 0.8, delay: 0.6, start: "top 100%" });
-      // Gentle continuous z-drift as the hero scrolls out of view — no pin,
-      // so it can never detach the section's own layout the way the old
-      // zoomPin effect did.
+      
       depthScrub(sceneWrapRef.current, { fromZ: 0, toZ: -140, trigger: rootRef.current });
     }, rootRef);
     return () => ctx.revert();
@@ -58,35 +61,35 @@ export default function Hero() {
       />
 
       <div className="relative max-w-7xl mx-auto px-6 md:px-10 grid md:grid-cols-2 gap-14 items-center w-full">
-        <div className="bg-panel border border-line rounded-3xl p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
+        <div className="bg-panel border border-line rounded-3xl p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md relative">
+          <VisualEditorTrigger sectionPath="/admin/hero_section" />
+          
           <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-5">
-            Backend-first partners for startups
+            {heroData.tag || "Backend-first partners for startups"}
           </p>
           <h1
             ref={headRef}
             className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight will-change-transform"
           >
-            Build fast. <span className="gold-text">Scale smart.</span>
+            {heroData.title_line1 || "Build fast."} <span className="gold-text">{heroData.title_line2 || "Scale smart."}</span>
             <br />
-            Sleep easy.
+            {heroData.title_line3 || "Sleep easy."}
           </h1>
           <p ref={subRef} className="mt-6 text-slate-100 text-base sm:text-lg max-w-md leading-relaxed">
-            We ship clean products that do the heavy lifting, without the heavy
-            drama — mobile apps, web backends, and MVPs built to hold up under
-            real traffic.
+            {heroData.description || "We ship clean products that do the heavy lifting, without the heavy drama — mobile apps, web backends, and MVPs built to hold up under real traffic."}
           </p>
           <div ref={ctaRef} className="mt-9 flex flex-wrap gap-4">
             <a
-              href="#contact"
+              href={heroData.btn1_href || "#contact"}
               className="inline-flex items-center gap-2 bg-gold hover:bg-amber text-ink font-semibold px-7 py-3.5 rounded-full transition-colors"
             >
-              Start Your Build <ArrowRight size={18} />
+              {heroData.btn1_text || "Start Your Build"} <ArrowRight size={18} />
             </a>
             <a
-              href="#work"
+              href={heroData.btn2_href || "#work"}
               className="inline-flex items-center gap-2 border border-line hover:border-gold/60 text-white/90 font-semibold px-7 py-3.5 rounded-full transition-colors"
             >
-              See Our Work
+              {heroData.btn2_text || "See Our Work"}
             </a>
           </div>
         </div>

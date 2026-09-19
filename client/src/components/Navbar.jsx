@@ -2,6 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ArrowUpRight, Compass, X } from "lucide-react";
 import { scrollTo, stopLenis, startLenis } from "../lib/lenis";
+import { useLandingData } from "../context/LandingDataContext";
+import { getImageUrl } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
 const LINKS = [
   {
@@ -368,6 +371,8 @@ function SystemsPipeline() {
 }
 
 export default function Navbar() {
+  const { data } = useLandingData();
+  const navData = data?.navbar_section?.[0] || {};
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState("home");
@@ -566,6 +571,7 @@ export default function Navbar() {
         `}</style>
 
         <nav className="relative max-w-7xl mx-auto flex items-center justify-between px-6 md:px-10 h-20">
+          <VisualEditorTrigger sectionPath="/admin/navbar_section" />
           <a
             href="#home"
             onClick={(e) => {
@@ -574,11 +580,17 @@ export default function Navbar() {
             }}
             className="relative z-10 block cursor-pointer transition-transform duration-300 active:scale-95 shrink-0"
           >
-            <img 
-              src="/logo-white.png" 
-              alt="Ally Soft Solutions Logo" 
-              className="h-14 w-auto object-contain" 
-            />
+            {navData.logo && (navData.logo.includes('.') || navData.logo.startsWith('upload/') || navData.logo.startsWith('data:')) ? (
+              <img 
+                src={getImageUrl(navData.logo)} 
+                alt="Allysoft Solutions Brand Logo" 
+                className="h-14 w-auto object-contain" 
+              />
+            ) : (
+              <span className="font-display text-xl font-black tracking-tighter text-white uppercase">
+                {navData.logo || "ALLY SOFT"}
+              </span>
+            )}
           </a>
 
           {/* Centered Systems Architecture Pipeline */}
@@ -589,14 +601,14 @@ export default function Navbar() {
           <div className="flex items-center gap-3 sm:gap-4 z-10">
             <a
               ref={ctaRef}
-              href="#contact"
+              href={navData.btn_href || "#contact"}
               onClick={(e) => {
                 e.preventDefault();
-                go("#contact");
+                go(navData.btn_href || "#contact");
               }}
               className="hidden sm:inline-flex items-center gap-2 bg-gold hover:bg-amber text-ink font-semibold text-sm px-5 py-2.5 rounded-full transition-all hover:shadow-[0_0_25px_rgba(245,166,35,0.45)] active:scale-95"
             >
-              Start Your Build
+              {navData.btn_text || "Start Your Build"}
             </a>
 
             {/* Custom Modern Menu Pill Button */}

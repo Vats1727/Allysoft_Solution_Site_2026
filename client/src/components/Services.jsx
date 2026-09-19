@@ -1,40 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Smartphone, Server, Rocket, Wrench } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import gsap from "gsap";
 import Reveal from "./Reveal";
 import { stopLenis, startLenis } from "../lib/lenis";
+import { useLandingData } from "../context/LandingDataContext";
+import { DynamicIcon } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
-const SERVICES = [
-  {
-    id: 1,
-    Icon: Smartphone,
-    title: "Mobile Apps",
-    desc: "Apps that feel light and non-heavy — smooth on the oldest device in your users' pockets.",
-  },
-  {
-    id: 2,
-    Icon: Server,
-    title: "Web Backends",
-    desc: "Backends that stay calm under traffic spikes, built for the day your product goes viral.",
-  },
-  {
-    id: 3,
-    Icon: Rocket,
-    title: "MVPs",
-    desc: "MVPs that fit the market quickly and grow gracefully as your user base does.",
-  },
-  {
-    id: 4,
-    Icon: Wrench,
-    title: "Custom Builds",
-    desc: "Custom builds for the weird, the wild, and the wonderfully specific parts of your idea.",
-  },
-];
-
-function HUDAnimation({ title, active }) {
+function HUDAnimation({ title, iconName, active }) {
   const graphicRef = useRef(null);
 
-  // Rotate circles and lines inside the HUD panel on page load or active slide
   useEffect(() => {
     const el = graphicRef.current;
     if (!el) return;
@@ -48,7 +23,9 @@ function HUDAnimation({ title, active }) {
     }
   }, [active]);
 
-  if (title === "Mobile Apps") {
+  const cleanIcon = (iconName || "").toLowerCase();
+
+  if (cleanIcon === "smartphone" || cleanIcon === "tablet" || cleanIcon.includes("phone")) {
     return (
       <div 
         ref={graphicRef} 
@@ -76,7 +53,7 @@ function HUDAnimation({ title, active }) {
     );
   }
 
-  if (title === "Web Backends") {
+  if (cleanIcon === "server" || cleanIcon === "database" || cleanIcon === "cpu" || cleanIcon.includes("dns")) {
     return (
       <div 
         ref={graphicRef} 
@@ -125,7 +102,7 @@ function HUDAnimation({ title, active }) {
     );
   }
 
-  if (title === "MVPs") {
+  if (cleanIcon === "rocket" || cleanIcon === "send" || cleanIcon.includes("launch")) {
     return (
       <div 
         ref={graphicRef} 
@@ -160,7 +137,34 @@ function HUDAnimation({ title, active }) {
     );
   }
 
-  // Custom Builds
+  // Fallback for custom dynamic icons
+  const IconComponent = LucideIcons[iconName];
+  if (IconComponent) {
+    return (
+      <div 
+        ref={graphicRef} 
+        className="w-full h-full flex items-center justify-center text-gold/60 select-none pointer-events-none"
+        style={{ perspective: "400px", transformStyle: "preserve-3d" }}
+      >
+        <style>{`
+          @keyframes hudPulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+          }
+          .hud-glowing-icon {
+            animation: hudPulse 3s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="flex flex-col items-center justify-center gap-4 hud-glowing-icon">
+          <div className="w-24 h-24 rounded-full border border-gold/25 flex items-center justify-center bg-gold/5 filter drop-shadow-[0_0_15px_rgba(245,166,35,0.2)]">
+            <IconComponent className="text-gold" size={40} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Generic fallback if no icon matched
   return (
     <div 
       ref={graphicRef} 
@@ -193,6 +197,17 @@ function HUDAnimation({ title, active }) {
 }
 
 export default function Services() {
+  const { data } = useLandingData();
+  const settings = data?.services_settings?.[0] || { badge: "What we do", title: "Our Services" };
+  
+  // Use seeded active services list or local default array
+  const servicesList = data?.services && data.services.length > 0 ? data.services : [
+    { id: 1, icon: "Smartphone", title: "Mobile Apps", desc: "Apps that feel light and non-heavy — smooth on the oldest device in your users' pockets." },
+    { id: 2, icon: "Server", title: "Web Backends", desc: "Backends that stay calm under traffic spikes, built for the day your product goes viral." },
+    { id: 3, icon: "Rocket", title: "MVPs", desc: "MVPs that fit the market quickly and grow gracefully as your user base does." },
+    { id: 4, icon: "Wrench", title: "Custom Builds", desc: "Custom builds for the weird, the wild, and the wonderfully specific parts of your idea." }
+  ];
+
   const containerRef = useRef(null);
   const textContainerRef = useRef(null);
   const hudContainerRef = useRef(null);
@@ -203,7 +218,6 @@ export default function Services() {
   const activeIndexRef = useRef(0);
   const isTransitioningRef = useRef(false);
 
-  // Handle responsive layouts
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -213,13 +227,11 @@ export default function Services() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 3D slide transitions using GSAP
   const triggerSlideTransition = (nextIndex, dir) => {
     const textEl = textContainerRef.current;
     const hudEl = hudContainerRef.current;
     if (!textEl || !hudEl) return;
 
-    // Text slide & fade
     gsap.timeline()
       .to(textEl, {
         y: -dir * 20,
@@ -237,7 +249,6 @@ export default function Services() {
         ease: "power2.out",
       });
 
-    // HUD 3D rotation flip
     gsap.timeline()
       .to(hudEl, {
         rotateX: dir * 90,
@@ -258,12 +269,10 @@ export default function Services() {
       });
   };
 
-  // Scroll wheel scrollytelling event binding - REGISTER GLOBALLY ON WINDOW
   useEffect(() => {
     if (isMobile) return;
 
     const handleGlobalWheel = (e) => {
-      // Only scroll services when cursor is hovering over the card box
       const isHoveringCard = cardRef.current && cardRef.current.contains(e.target);
       if (!isHoveringCard) return;
 
@@ -272,7 +281,6 @@ export default function Services() {
 
       const rect = container.getBoundingClientRect();
 
-      // Reset active index to 0 when scrolled out of viewport
       if (rect.top > window.innerHeight - 50 || rect.bottom < 50) {
         if (activeIndexRef.current !== 0) {
           setActiveIndex(0);
@@ -285,17 +293,14 @@ export default function Services() {
 
       const dir = e.deltaY > 0 ? 1 : -1;
 
-      // If scrolling UP on first service, let event bubble to scroll up page
       if (dir === -1 && activeIndexRef.current === 0) {
         return;
       }
 
-      // If scrolling DOWN on last service, let event bubble to scroll to next section
-      if (dir === 1 && activeIndexRef.current === SERVICES.length - 1) {
+      if (dir === 1 && activeIndexRef.current === servicesList.length - 1) {
         return;
       }
 
-      // Intercept scroll event completely to cycle between services
       e.preventDefault();
       e.stopPropagation();
 
@@ -303,7 +308,7 @@ export default function Services() {
       if (Math.abs(e.deltaY) < 18) return;
 
       const nextIndex = activeIndexRef.current + dir;
-      if (nextIndex >= 0 && nextIndex < SERVICES.length) {
+      if (nextIndex >= 0 && nextIndex < servicesList.length) {
         isTransitioningRef.current = true;
         setActiveIndex(nextIndex);
         activeIndexRef.current = nextIndex;
@@ -319,29 +324,43 @@ export default function Services() {
     return () => {
       window.removeEventListener("wheel", handleGlobalWheel, { capture: true });
     };
-  }, [isMobile]);
+  }, [isMobile, servicesList]);
 
-  const activeService = SERVICES[activeIndex];
+  // Adjust active index range if database list changes
+  useEffect(() => {
+    if (activeIndex >= servicesList.length) {
+      setActiveIndex(0);
+      activeIndexRef.current = 0;
+    }
+  }, [servicesList]);
 
-  // Mobile/Tablet View fallback: stacked layouts
+  const activeService = servicesList[activeIndex] || servicesList[0] || {};
+
   if (isMobile) {
     return (
       <section id="services" className="relative py-28 overflow-hidden backdrop-blur-[2px]">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6 relative">
+          <VisualEditorTrigger sectionPath="/admin/services_settings" />
+          
           <Reveal y={30} className="max-w-xl mb-12">
-            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">What we do</p>
-            <h2 className="font-display text-3xl font-bold">Our Services</h2>
+            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+              {settings.badge}
+            </p>
+            <h2 className="font-display text-3xl font-bold">
+              {settings.title}
+            </h2>
           </Reveal>
 
-          <div className="space-y-6">
-            {SERVICES.map(({ id, Icon, title, desc }) => (
+          <div className="space-y-6 relative">
+            <VisualEditorTrigger sectionPath="/admin/services" />
+            {servicesList.map(({ id, icon, title, desc }) => (
               <div 
                 key={id}
                 className="bg-panel border border-line rounded-2xl p-6 flex flex-col gap-5"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center text-gold">
-                    <Icon size={20} />
+                    <DynamicIcon name={icon} size={20} />
                   </div>
                   <h3 className="font-display font-semibold text-lg text-white">{title}</h3>
                 </div>
@@ -354,15 +373,19 @@ export default function Services() {
     );
   }
 
-  // Desktop View: 3D Scroll-Locked Carousel
   return (
     <section id="services" ref={containerRef} className="relative h-screen w-full flex items-center justify-center overflow-hidden backdrop-blur-[2px]">
       <div className="max-w-7xl w-full mx-auto px-10">
         
         {/* Section Header */}
-        <div className="max-w-xl mb-12 text-left">
-          <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">What we do</p>
-          <h2 className="font-display text-4xl font-bold text-white">Our Services</h2>
+        <div className="max-w-xl mb-12 text-left relative">
+          <VisualEditorTrigger sectionPath="/admin/services_settings" />
+          <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+            {settings.badge}
+          </p>
+          <h2 className="font-display text-4xl font-bold text-white">
+            {settings.title}
+          </h2>
         </div>
 
         {/* 3D Dashboard Control Container */}
@@ -371,6 +394,7 @@ export default function Services() {
           className="max-w-4xl mx-auto flex items-center justify-between gap-12 min-h-[380px] p-10 bg-panel border border-line rounded-3xl backdrop-blur-md relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
           style={{ transform: "translate3d(0, 0, 0)", backfaceVisibility: "hidden" }}
         >
+          <VisualEditorTrigger sectionPath="/admin/services" />
           
           {/* Left Side: Slide Details */}
           <div ref={textContainerRef} className="flex-1 flex flex-col items-start text-left select-none">
@@ -384,14 +408,14 @@ export default function Services() {
             className="w-48 h-48 rounded-2xl border border-line bg-void/50 flex items-center justify-center relative overflow-hidden transition-all duration-300 shadow-[inset_0_0_16px_rgba(0,0,0,0.6)]"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <HUDAnimation title={activeService.title} active={true} />
+            <HUDAnimation title={activeService.title} iconName={activeService.icon} active={true} />
           </div>
 
         </div>
 
         {/* Slide progress indicators */}
         <div className="mt-10 flex justify-center gap-3 select-none">
-          {SERVICES.map((_, idx) => (
+          {servicesList.map((_, idx) => (
             <span
               key={idx}
               className={`block h-1.5 rounded-full transition-all duration-300 ${

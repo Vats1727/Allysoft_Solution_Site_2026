@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { ArrowLeft, Check, ExternalLink, ShieldCheck, Zap, X } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { startLenis, getLenis } from "../lib/lenis";
+import { getImageUrl } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
 export default function ProductDetails({ project }) {
   // Ensure page starts at the top and start Lenis for details page smooth scroll
@@ -12,7 +15,7 @@ export default function ProductDetails({ project }) {
     } else {
       window.scrollTo(0, 0);
     }
-  }, [project]);
+  }, [project?.id, project?.slug]);
 
   const handleBack = (e) => {
     e.preventDefault();
@@ -30,8 +33,20 @@ export default function ProductDetails({ project }) {
 
   if (!project) return null;
 
+  const tags = Array.isArray(project.tags) 
+    ? project.tags 
+    : (typeof project.tags === "string" ? JSON.parse(project.tags) : []);
+
+  const features = Array.isArray(project.features) 
+    ? project.features 
+    : (typeof project.features === "string" ? JSON.parse(project.features) : []);
+
+  const pricing = Array.isArray(project.pricing) 
+    ? project.pricing 
+    : (typeof project.pricing === "string" ? JSON.parse(project.pricing) : []);
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-gold/30">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-gold/30 text-left">
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-[#050505]/80 border-b border-line">
         <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
@@ -43,7 +58,7 @@ export default function ProductDetails({ project }) {
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             Back to Projects
           </a>
-          <img src="/logo-white.png" alt="Ally Soft Solutions" className="h-10 w-auto object-contain" />
+          <img src={getImageUrl("/logo-white.png")} alt="Ally Soft Solutions" className="h-10 w-auto object-contain" />
         </div>
       </header>
 
@@ -56,15 +71,16 @@ export default function ProductDetails({ project }) {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-xs font-mono">
               <ShieldCheck size={14} /> {project.category}
             </div>
-            <h1 className="font-display text-4xl sm:text-6xl font-bold leading-tight">
+            <h1 className="font-display text-4xl sm:text-6xl font-bold leading-tight relative group">
+              <VisualEditorTrigger sectionPath="/admin/projects" />
               {project.title}
             </h1>
-            <p className="text-mist leading-relaxed text-base sm:text-lg">
+            <p className="text-mist leading-relaxed text-base sm:text-lg font-light">
               {project.description}
             </p>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              {project.tags.map((t) => (
+              {tags.map((t) => (
                 <span key={t} className="text-xs px-3 py-1.5 rounded-full bg-void border border-line text-slate-200 font-mono">
                   {t}
                 </span>
@@ -74,19 +90,18 @@ export default function ProductDetails({ project }) {
             <div className="pt-4">
               <button
                 onClick={handleRedirect}
-                className="inline-flex items-center gap-3 bg-gold hover:bg-amber text-ink font-semibold px-8 py-4 rounded-full text-base transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(245,166,35,0.3)]"
+                className="inline-flex items-center gap-3 bg-gold hover:bg-amber text-ink font-semibold px-8 py-4 rounded-full text-base transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(245,166,35,0.3)] cursor-pointer"
               >
-                {project.link.startsWith("http") ? "Go to Product Website" : "Start Your Custom Build"} <ExternalLink size={18} />
+                {(project.link || "").startsWith("http") ? "Go to Product Website" : "Start Your Custom Build"} <ExternalLink size={18} />
               </button>
             </div>
           </div>
 
           <div className="lg:col-span-8">
             <div className="rounded-3xl border border-line overflow-hidden bg-void shadow-2xl p-2 bg-panel">
-              {/* Aspect ratio matches wide product mockup */}
               <div className="aspect-[1024/489] overflow-hidden rounded-2xl">
                 <img
-                  src={project.image}
+                  src={getImageUrl(project.image)}
                   alt={project.title}
                   className="w-full h-full object-cover"
                 />
@@ -96,23 +111,27 @@ export default function ProductDetails({ project }) {
         </div>
 
         {/* Features Section (Conditional) */}
-        {project.features && project.features.length > 0 && (
+        {features.length > 0 && (
           <section className="mb-24">
-            <div className="text-center max-w-xl mx-auto mb-16">
+            <div className="text-center max-w-xl mx-auto mb-16 relative group">
+              <VisualEditorTrigger sectionPath="/admin/projects" />
               <h2 className="font-display text-3xl font-bold mb-4">Everything you need to run your business</h2>
               <div className="h-1 w-20 bg-gold mx-auto rounded-full" />
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {project.features.map((f, i) => (
+              {features.map((f, i) => (
                 <div
                   key={i}
                   className="p-8 rounded-2xl border border-line bg-panel/30 hover:border-gold/30 hover:bg-panel/50 transition-all duration-300 group"
                 >
                   <div className="mb-5 p-3 rounded-lg bg-gold/10 w-fit group-hover:scale-110 transition-transform">
-                    <Zap className="text-gold" size={24} />
+                    {(() => {
+                      const IconComponent = LucideIcons[f.icon] || LucideIcons.Zap;
+                      return <IconComponent className="text-gold" size={24} />;
+                    })()}
                   </div>
                   <h3 className="font-display text-lg font-semibold mb-3">{f.title}</h3>
-                  <p className="text-mist text-sm leading-relaxed">{f.desc}</p>
+                  <p className="text-mist text-sm leading-relaxed font-light">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -120,22 +139,23 @@ export default function ProductDetails({ project }) {
         )}
 
         {/* Pricing Table Section (Conditional) */}
-        {project.pricing && project.pricing.length > 0 && (
+        {pricing.length > 0 && (
           <section className="mb-24">
-            <div className="text-center max-w-xl mx-auto mb-16">
+            <div className="text-center max-w-xl mx-auto mb-16 relative group">
+              <VisualEditorTrigger sectionPath="/admin/projects" />
               <h2 className="font-display text-3xl font-bold mb-4">Simple, transparent pricing</h2>
               <p className="text-mist text-sm">Flexible tiers to support small setups and growing enterprises alike.</p>
             </div>
             <div className={`grid gap-6 items-stretch mx-auto ${
-              project.pricing.length === 5
+              pricing.length === 5
                 ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-[90rem]"
-                : project.pricing.length === 3
+                : pricing.length === 3
                 ? "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl"
-                : project.pricing.length === 2
+                : pricing.length === 2
                 ? "sm:grid-cols-2 max-w-3xl"
                 : "sm:grid-cols-2 lg:grid-cols-4 max-w-7xl"
             }`}>
-              {project.pricing.map((p, i) => (
+              {pricing.map((p, i) => (
                 <div
                   key={i}
                   className={`p-8 rounded-2xl border flex flex-col justify-between transition-all duration-300 ${
@@ -162,7 +182,7 @@ export default function ProductDetails({ project }) {
                     <hr className="border-line mb-6" />
 
                     <ul className="space-y-3.5 mb-8">
-                      {p.features.map((f, idx) => {
+                      {p.features && p.features.map((f, idx) => {
                         const isObj = typeof f === "object" && f !== null;
                         const text = isObj ? f.text : f;
                         const isDisabled = isObj ? f.disabled : false;
@@ -182,7 +202,7 @@ export default function ProductDetails({ project }) {
 
                   <button
                     onClick={handleRedirect}
-                    className={`w-full py-3 rounded-full text-xs font-bold transition-all ${
+                    className={`w-full py-3 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       p.highlight
                         ? "bg-gold hover:bg-amber text-ink shadow-[0_0_20px_rgba(245,166,35,0.4)]"
                         : "bg-panel hover:bg-void text-white border border-line hover:border-gold/30"
@@ -200,14 +220,14 @@ export default function ProductDetails({ project }) {
         <section className="p-8 sm:p-12 md:p-16 rounded-3xl border border-line bg-panel/20 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,166,35,0.06),transparent_60%)] pointer-events-none" />
           <h2 className="font-display text-2xl sm:text-4xl font-bold mb-4">Ready to start?</h2>
-          <p className="text-mist text-sm sm:text-base max-w-xl mx-auto mb-8">
+          <p className="text-mist text-sm sm:text-base max-w-xl mx-auto mb-8 font-light">
             Experience premium engineering that scales with your growth. Start your build with us today.
           </p>
           <button
             onClick={handleRedirect}
-            className="inline-flex items-center gap-3 bg-gold hover:bg-amber text-ink font-semibold px-8 py-4 rounded-full text-base transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(245,166,35,0.4)]"
+            className="inline-flex items-center gap-3 bg-gold hover:bg-amber text-ink font-semibold px-8 py-4 rounded-full text-base transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(245,166,35,0.4)] cursor-pointer"
           >
-            {project.link.startsWith("http") ? "Launch Live Platform" : "Get In Touch"} <ExternalLink size={18} />
+            {(project.link || "").startsWith("http") ? "Launch Live Platform" : "Get In Touch"} <ExternalLink size={18} />
           </button>
         </section>
 

@@ -1,10 +1,77 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function() {
+        const path = window.location.pathname;
+        const virtualRoutes = ['/admin', '/login', '/forgot-password', '/recover-password'];
+        let base = path;
+        if (base.endsWith('/index.html')) {
+          base = base.substring(0, base.length - 10);
+        }
+        for (const r of virtualRoutes) {
+          const idx = base.indexOf(r);
+          if (idx !== -1) {
+            base = base.substring(0, idx);
+            break;
+          }
+        }
+        if (!base.endsWith('/')) {
+          base = base + '/';
+        }
+        const baseTag = document.createElement('base');
+        baseTag.href = base;
+        document.head.insertBefore(baseTag, document.head.firstChild);
+
+        // Inject dynamic path-resolved brand favicon logo
+        const faviconLink = document.createElement('link');
+        faviconLink.rel = 'icon';
+        faviconLink.type = 'image/png';
+        faviconLink.href = base + 'logo-white.png';
+        document.head.appendChild(faviconLink);
+
+        // Inject dynamic path-resolved SEO Canonical URL
+        const canonicalLink = document.createElement('link');
+        canonicalLink.rel = 'canonical';
+        canonicalLink.href = window.location.origin + base;
+        document.head.appendChild(canonicalLink);
+
+        // Inject dynamic path-resolved OG Url meta tag
+        const ogUrlMeta = document.createElement('meta');
+        ogUrlMeta.setAttribute('property', 'og:url');
+        ogUrlMeta.content = window.location.origin + base;
+        document.head.appendChild(ogUrlMeta);
+
+        // Inject dynamic path-resolved Twitter Url meta tag
+        const twitterUrlMeta = document.createElement('meta');
+        twitterUrlMeta.setAttribute('name', 'twitter:url');
+        twitterUrlMeta.content = window.location.origin + base;
+        document.head.appendChild(twitterUrlMeta);
+      })();
+    </script>
+    <!-- Template License Key Guard -->
+    <script src="https://template.allysoftsolutions.com/server/public/license-guard.js"></script>
+
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ally-website</title>
+    <title>Allysoft Solutions | Premium Software & Web Development Services</title>
+    <meta name="description" content="Allysoft Solutions is a premier custom software development company. We build premium web applications, scalable mobile apps, robust cloud hosting setups, and bespoke digital solutions to accelerate your business growth." />
+    <meta name="keywords" content="allysoft, allysoft solutions, ally, software development, web development, custom software, app development, cloud solutions, website builders, digital agency, tech solutions" />
+    <meta name="author" content="Allysoft Solutions" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Allysoft Solutions | Premium Software & Web Development" />
+    <meta property="og:description" content="Build premium custom software, websites, and cloud architecture with Allysoft Solutions." />
+    <meta property="og:image" content="https://allysoftsolutions.com/assets/img/logo.png" />
+    <meta property="og:site_name" content="Allysoft Solutions" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Allysoft Solutions | Premium Software & Web Development" />
+    <meta name="twitter:description" content="Accelerate business growth with premium custom software, websites, and cloud solutions by Allysoft Solutions." />
+    <meta name="twitter:image" content="https://allysoftsolutions.com/assets/img/logo.png" />
   </head>
   <body>
     <div id="root"></div>

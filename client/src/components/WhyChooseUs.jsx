@@ -1,48 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { Award, Clock, Users, Headphones, ShieldCheck, TrendingUp } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import gsap from "gsap";
 import Reveal from "./Reveal";
+import { useLandingData } from "../context/LandingDataContext";
+import { DynamicIcon } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
-const POINTS = [
-  {
-    id: 1,
-    Icon: Award,
-    title: "Proven Expertise",
-    desc: "Over 10 years delivering successful projects across industries."
-  },
-  {
-    id: 2,
-    Icon: Clock,
-    title: "On-Time Delivery",
-    desc: "We pride ourselves on meeting deadlines without cutting quality."
-  },
-  {
-    id: 3,
-    Icon: Users,
-    title: "Dedicated Team",
-    desc: "Skilled professionals committed to your project's success."
-  },
-  {
-    id: 4,
-    Icon: Headphones,
-    title: "24/7 Support",
-    desc: "Round-the-clock support to keep your systems running smoothly."
-  },
-  {
-    id: 5,
-    Icon: ShieldCheck,
-    title: "Secure Solutions",
-    desc: "A security-first approach to protect your data and applications."
-  },
-  {
-    id: 6,
-    Icon: TrendingUp,
-    title: "Scalable Growth",
-    desc: "Solutions designed to grow alongside your business needs."
-  }
-];
-
-function HUDCard({ title, active }) {
+function HUDCard({ title, iconName, active }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -56,7 +20,9 @@ function HUDCard({ title, active }) {
     }
   }, [active]);
 
-  if (title === "Proven Expertise") {
+  const cleanIcon = (iconName || "").toLowerCase();
+
+  if (cleanIcon === "award" || cleanIcon === "badgecheck") {
     return (
       <div
         ref={containerRef}
@@ -81,7 +47,7 @@ function HUDCard({ title, active }) {
     );
   }
 
-  if (title === "On-Time Delivery") {
+  if (cleanIcon === "clock" || cleanIcon === "timer") {
     return (
       <div
         ref={containerRef}
@@ -116,7 +82,7 @@ function HUDCard({ title, active }) {
     );
   }
 
-  if (title === "Dedicated Team") {
+  if (cleanIcon === "users" || cleanIcon === "user" || cleanIcon.includes("people")) {
     return (
       <div
         ref={containerRef}
@@ -158,7 +124,7 @@ function HUDCard({ title, active }) {
     );
   }
 
-  if (title === "24/7 Support") {
+  if (cleanIcon === "headphones" || cleanIcon === "phone" || cleanIcon.includes("support")) {
     return (
       <div
         ref={containerRef}
@@ -185,7 +151,7 @@ function HUDCard({ title, active }) {
     );
   }
 
-  if (title === "Secure Solutions") {
+  if (cleanIcon === "shieldcheck" || cleanIcon === "shield" || cleanIcon.includes("lock")) {
     return (
       <div
         ref={containerRef}
@@ -209,7 +175,60 @@ function HUDCard({ title, active }) {
     );
   }
 
-  // Scalable Growth (Default case)
+  if (cleanIcon === "trendingup" || cleanIcon === "linechart" || cleanIcon.includes("growth")) {
+    return (
+      <div
+        ref={containerRef}
+        className="w-full h-full flex items-center justify-center text-gold/60 select-none pointer-events-none"
+        style={{ perspective: "400px", transformStyle: "preserve-3d" }}
+      >
+        <style>{`
+          @keyframes growthDraw {
+            0% { stroke-dashoffset: 80; }
+            100% { stroke-dashoffset: 0; }
+          }
+          .hud-growth {
+            stroke-dasharray: 80;
+            animation: growthDraw 4s ease-in-out infinite;
+          }
+        `}</style>
+        <svg className="w-20 h-20 filter drop-shadow-[0_0_12px_rgba(245,166,35,0.3)]" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2">
+          <path d="M 22 74 L 42 54 L 56 64 L 78 34" strokeWidth="1.6" className="hud-growth" />
+          <polyline points="70,34 78,34 78,42" strokeWidth="1.6" />
+          <line x1="20" y1="78" x2="80" y2="78" strokeDasharray="3 3" />
+        </svg>
+      </div>
+    );
+  }
+
+  // Fallback for custom dynamic icons
+  const IconComponent = LucideIcons[iconName];
+  if (IconComponent) {
+    return (
+      <div
+        ref={containerRef}
+        className="w-full h-full flex items-center justify-center text-gold/60 select-none pointer-events-none"
+        style={{ perspective: "400px", transformStyle: "preserve-3d" }}
+      >
+        <style>{`
+          @keyframes hudPulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+          }
+          .hud-glowing-icon {
+            animation: hudPulse 3s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="flex flex-col items-center justify-center gap-4 hud-glowing-icon">
+          <div className="w-24 h-24 rounded-full border border-gold/25 flex items-center justify-center bg-gold/5 filter drop-shadow-[0_0_15px_rgba(245,166,35,0.2)]">
+            <IconComponent className="text-gold" size={40} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Generic fallback if no icon matched
   return (
     <div
       ref={containerRef}
@@ -217,25 +236,47 @@ function HUDCard({ title, active }) {
       style={{ perspective: "400px", transformStyle: "preserve-3d" }}
     >
       <style>{`
-        @keyframes growthDraw {
-          0% { stroke-dashoffset: 80; }
-          100% { stroke-dashoffset: 0; }
+        @keyframes reticleRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
-        .hud-growth {
-          stroke-dasharray: 80;
-          animation: growthDraw 4s ease-in-out infinite;
+        .hud-reticle-rotate {
+          transform-origin: center;
+          animation: reticleRotate 20s linear infinite;
         }
       `}</style>
-      <svg className="w-20 h-20 filter drop-shadow-[0_0_12px_rgba(245,166,35,0.3)]" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2">
-        <path d="M 22 74 L 42 54 L 56 64 L 78 34" strokeWidth="1.6" className="hud-growth" />
-        <polyline points="70,34 78,34 78,42" strokeWidth="1.6" />
-        <line x1="20" y1="78" x2="80" y2="78" strokeDasharray="3 3" />
+      <svg className="w-20 h-20 filter drop-shadow-[0_0_12px_rgba(245,166,35,0.3)] hud-reticle-rotate" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <circle cx="50" cy="50" r="36" />
+        <circle cx="50" cy="50" r="20" strokeDasharray="3 4" />
+        <line x1="10" y1="50" x2="90" y2="50" strokeDasharray="5 5" />
+        <line x1="50" y1="10" x2="50" y2="90" strokeDasharray="5 5" />
+        
+        <path d="M 20 30 L 20 20 L 30 20" />
+        <path d="M 80 30 L 80 20 L 70 20" />
+        <path d="M 20 70 L 20 80 L 30 80" />
+        <path d="M 80 70 L 80 80 L 70 80" />
       </svg>
     </div>
   );
 }
 
 export default function WhyChooseUs() {
+  const { data } = useLandingData();
+
+  const settings = data?.why_choose_us_settings?.[0] || {
+    badge: "Why Choose Us",
+    title: "Our Commitment"
+  };
+
+  const pointsList = data?.why_choose_us && data.why_choose_us.length > 0 ? data.why_choose_us : [
+    { id: 1, icon: "Award", title: "Proven Expertise", desc: "Over 10 years delivering successful projects across industries." },
+    { id: 2, icon: "Clock", title: "On-Time Delivery", desc: "We pride ourselves on meeting deadlines without cutting quality." },
+    { id: 3, icon: "Users", title: "Dedicated Team", desc: "Skilled professionals committed to your project's success." },
+    { id: 4, icon: "Headphones", title: "24/7 Support", desc: "Round-the-clock support to keep your systems running smoothly." },
+    { id: 5, icon: "ShieldCheck", title: "Secure Solutions", desc: "A security-first approach to protect your data and applications." },
+    { id: 6, icon: "TrendingUp", title: "Scalable Growth", desc: "Solutions designed to grow alongside your business needs." }
+  ];
+
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const contentRef = useRef(null);
@@ -300,7 +341,6 @@ export default function WhyChooseUs() {
     if (isMobile) return;
 
     const handleWheel = (e) => {
-      // Only scroll points when cursor is hovering over the card box
       const isHoveringCard = cardRef.current && cardRef.current.contains(e.target);
       if (!isHoveringCard) return;
 
@@ -308,7 +348,6 @@ export default function WhyChooseUs() {
       if (!el) return;
 
       const rect = el.getBoundingClientRect();
-      // Reset index to 0 if we scroll out of view
       if ((rect.top > window.innerHeight - 50 || rect.bottom < 50) && scrollIndex.current !== 0) {
         setActiveIndex(0);
         scrollIndex.current = 0;
@@ -318,11 +357,9 @@ export default function WhyChooseUs() {
 
       const direction = e.deltaY > 0 ? 1 : -1;
 
-      // Prevent navigating past bounds
       if (direction === -1 && scrollIndex.current === 0) return;
-      if (direction === 1 && scrollIndex.current === POINTS.length - 1) return;
+      if (direction === 1 && scrollIndex.current === pointsList.length - 1) return;
 
-      // Stop wheel event propagation to enable scroll hijacking in section
       e.preventDefault();
       e.stopPropagation();
 
@@ -330,7 +367,7 @@ export default function WhyChooseUs() {
       if (Math.abs(e.deltaY) < 18) return;
 
       const nextIdx = scrollIndex.current + direction;
-      if (nextIdx >= 0 && nextIdx < POINTS.length) {
+      if (nextIdx >= 0 && nextIdx < pointsList.length) {
         isAnimating.current = true;
         setActiveIndex(nextIdx);
         scrollIndex.current = nextIdx;
@@ -345,25 +382,40 @@ export default function WhyChooseUs() {
     return () => {
       window.removeEventListener("wheel", handleWheel, { capture: true });
     };
-  }, [isMobile]);
+  }, [isMobile, pointsList]);
 
-  const activePoint = POINTS[activeIndex];
+  // Adjust active index range if database list changes
+  useEffect(() => {
+    if (activeIndex >= pointsList.length) {
+      setActiveIndex(0);
+      scrollIndex.current = 0;
+    }
+  }, [pointsList]);
+
+  const activePoint = pointsList[activeIndex] || pointsList[0] || {};
 
   if (isMobile) {
     return (
       <section id="why-choose-us" className="relative py-24 overflow-hidden backdrop-blur-[2px]">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6 relative">
+          <VisualEditorTrigger sectionPath="/admin/why_choose_us_settings" />
+          
           <Reveal y={30} className="max-w-xl mb-12">
-            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">Why Choose Us</p>
-            <h2 className="font-display text-3xl font-bold">Our Commitment</h2>
+            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+              {settings.badge}
+            </p>
+            <h2 className="font-display text-3xl font-bold">
+              {settings.title}
+            </h2>
           </Reveal>
 
-          <div className="space-y-6">
-            {POINTS.map(({ id, Icon, title, desc }) => (
+          <div className="space-y-6 relative">
+            <VisualEditorTrigger sectionPath="/admin/why_choose_us" />
+            {pointsList.map(({ id, icon, title, desc }) => (
               <div key={id} className="bg-panel border border-line rounded-2xl p-6 flex flex-col gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center text-gold">
-                    <Icon size={20} />
+                    <DynamicIcon name={icon} size={20} />
                   </div>
                   <h3 className="font-display font-semibold text-lg text-white">{title}</h3>
                 </div>
@@ -383,9 +435,16 @@ export default function WhyChooseUs() {
       className="relative h-screen w-full flex items-center justify-center overflow-hidden backdrop-blur-[2px]"
     >
       <div className="max-w-7xl w-full mx-auto px-10">
-        <div className="max-w-xl mb-12 text-left">
-          <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">Why Choose Us</p>
-          <h2 className="font-display text-4xl font-bold text-white">Our Commitment</h2>
+        
+        {/* Section Header */}
+        <div className="max-w-xl mb-12 text-left relative">
+          <VisualEditorTrigger sectionPath="/admin/why_choose_us_settings" />
+          <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+            {settings.badge}
+          </p>
+          <h2 className="font-display text-4xl font-bold text-white">
+            {settings.title}
+          </h2>
         </div>
 
         <div
@@ -393,6 +452,8 @@ export default function WhyChooseUs() {
           className="max-w-4xl mx-auto flex items-center justify-between gap-12 min-h-[380px] p-10 bg-panel border border-line rounded-3xl backdrop-blur-md relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
           style={{ transform: "translate3d(0, 0, 0)", backfaceVisibility: "hidden" }}
         >
+          <VisualEditorTrigger sectionPath="/admin/why_choose_us" />
+          
           <div ref={titleRef} className="flex-1 flex flex-col items-start text-left select-none">
             <h3 className="font-display font-bold text-3xl mb-4 text-white">{activePoint.title}</h3>
             <p className="text-slate-100 text-lg leading-relaxed max-w-sm">{activePoint.desc}</p>
@@ -403,12 +464,12 @@ export default function WhyChooseUs() {
             className="w-48 h-48 rounded-2xl border border-line bg-void/50 flex items-center justify-center relative overflow-hidden transition-all duration-300 shadow-[inset_0_0_16px_rgba(0,0,0,0.6)]"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <HUDCard title={activePoint.title} active={true} />
+            <HUDCard title={activePoint.title} iconName={activePoint.icon} active={true} />
           </div>
         </div>
 
         <div className="mt-10 flex justify-center gap-3 select-none">
-          {POINTS.map((_, idx) => (
+          {pointsList.map((_, idx) => (
             <span
               key={idx}
               className={`block h-1.5 rounded-full transition-all duration-300 ${

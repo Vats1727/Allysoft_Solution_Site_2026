@@ -1,4 +1,5 @@
 import { useEffect, useState, useLayoutEffect, useRef } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { initLenis, getLenis } from "./lib/lenis";
 import { gsap } from "gsap";
 import { initGsap } from "./lib/engine";
@@ -19,9 +20,17 @@ import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import DepthSection from "./components/DepthSection";
 import ProductDetails from "./components/ProductDetails";
-import { PROJECTS } from "./data/projects";
+import { LandingDataProvider, useLandingData } from "./context/LandingDataContext";
+import { getDynamicBase } from "./utils/helpers";
 
-const sections = [
+// Admin Dashboard Components
+import AdminLayout from "./components/Admin/AdminLayout";
+import ProtectedRoute from "./components/Admin/ProtectedRoute";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import RecoverPassword from "./pages/RecoverPassword";
+
+const scrollySections = [
   { id: "home", component: <Hero /> },
   { id: "services", component: <DepthSection fromZ={-100} toZ={70}><Services /></DepthSection> },
   { id: "work", component: <DepthSection fromZ={-80} toZ={60}><Work /></DepthSection> },
@@ -33,8 +42,9 @@ const sections = [
   { id: "team", component: <DepthSection fromZ={-80} toZ={60}><Team /></DepthSection> },
 ];
 
-export default function App() {
-  const [isLoaded, setIsLoaded] = useState(false);
+function PublicLandingPage() {
+  const { data, loading } = useLandingData();
+  const [loaderFinished, setLoaderFinished] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
 
@@ -43,9 +53,24 @@ export default function App() {
   const activeIndexRef = useRef(0);
   const isAnimating = useRef(false);
 
+  // Core Custom Cursor body class lifecycle wrapper rule
+  useEffect(() => {
+    document.body.classList.add("custom-cursor-active");
+    return () => {
+      document.body.classList.remove("custom-cursor-active");
+    };
+  }, []);
+
+  const isPreview = new URLSearchParams(window.location.search).get('admin_preview') === 'true';
+  const isLoaded = isPreview || (!loading && loaderFinished);
+
   const isProductPage = currentHash.startsWith("#product/");
   const activeProductSlug = isProductPage ? currentHash.replace("#product/", "") : null;
-  const activeProduct = activeProductSlug ? PROJECTS.find((p) => p.slug === activeProductSlug) : null;
+  
+  // Find project dynamically from seeded database projects lists
+  const activeProduct = activeProductSlug && data?.projects 
+    ? data.projects.find((p) => p.slug === activeProductSlug) 
+    : null;
 
   useEffect(() => {
     const onHashChange = () => setCurrentHash(window.location.hash);
@@ -68,7 +93,7 @@ export default function App() {
   }, []);
 
   useLayoutEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || !isLoaded || isProductPage) return;
 
     initGsap();
 
@@ -95,13 +120,13 @@ export default function App() {
       scrollTrigger: {
         trigger: triggerRef.current,
         start: "top top",
-        end: () => `+=${window.innerHeight * (sections.length - 1)}`,
+        end: () => `+=${window.innerHeight * (scrollySections.length - 1)}`,
         pin: containerRef.current,
         scrub: 0.1,
         onUpdate: (self) => {
           const idx = Math.min(
-            sections.length - 1,
-            Math.max(0, Math.round(self.progress * (sections.length - 1)))
+            scrollySections.length - 1,
+            Math.max(0, Math.round(self.progress * (scrollySections.length - 1)))
           );
           activeIndexRef.current = idx;
           panels.forEach((p, pIdx) => {
@@ -149,24 +174,20 @@ export default function App() {
       tl.scrollTrigger?.kill();
       tl.kill();
     };
-  }, [isDesktop, isProductPage]);
+  }, [isDesktop, isLoaded, isProductPage]);
 
   // One-Section-At-A-Time scroll hijacking for pinned deck to prevent skipping
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || !isLoaded || isProductPage) return;
 
     const handleWheel = (e) => {
-      // Allow native scrolling when at the last section and scrolling down (exiting to Contact/Footer)
-      if (activeIndexRef.current === sections.length - 1 && e.deltaY > 0) {
+      if (activeIndexRef.current === scrollySections.length - 1 && e.deltaY > 0) {
         return;
       }
-
-      // Allow native scrolling when at the first section and scrolling up (back to top)
       if (activeIndexRef.current === 0 && e.deltaY < 0) {
         return;
       }
 
-      // Block normal free scrolling in the pinned zone
       e.preventDefault();
 
       if (isAnimating.current) return;
@@ -174,7 +195,7 @@ export default function App() {
 
       let nextIndex = activeIndexRef.current;
       if (e.deltaY > 0) {
-        nextIndex = Math.min(sections.length - 1, activeIndexRef.current + 1);
+        nextIndex = Math.min(scrollySections.length - 1, activeIndexRef.current + 1);
       } else {
         nextIndex = Math.max(0, activeIndexRef.current - 1);
       }
@@ -183,7 +204,6 @@ export default function App() {
         isAnimating.current = true;
         const targetY = nextIndex * window.innerHeight;
 
-        // Defensive unlock fallback
         const fallback = setTimeout(() => {
           isAnimating.current = false;
         }, 1200);
@@ -218,11 +238,11 @@ export default function App() {
         container.removeEventListener("wheel", handleWheel);
       }
     };
-  }, [isDesktop, isProductPage]);
+  }, [isDesktop, isLoaded, isProductPage]);
 
   // Scroll to hash target (e.g. #work) when returning from product details page
   useEffect(() => {
-    if (!isProductPage && currentHash) {
+    if (!isProductPage && currentHash && isLoaded) {
       const timer = setTimeout(() => {
         const targetEl = document.querySelector(currentHash);
         if (targetEl) {
@@ -234,19 +254,32 @@ export default function App() {
             window.scrollTo(0, targetY);
           }
         }
-      }, 50); // small delay to let DOM elements mount
+      }, 50);
       return () => clearTimeout(timer);
     }
-  }, [isProductPage, currentHash]);
+  }, [isProductPage, currentHash, isLoaded]);
 
-  const handleLoadingComplete = () => {
-    setIsLoaded(true);
-  };
+  // Root-level message listener to intercept postMessage updates from parent Customizer panel
+  useEffect(() => {
+    const handleMessage = (e) => {
+      if (e.data) {
+        if (e.data.type === "LIVE_DATA_REFRESH") {
+          window.dispatchEvent(new CustomEvent("api-data-updated"));
+        } else if (e.data.type === "LIVE_DATA_UPDATE") {
+          window.dispatchEvent(new CustomEvent("api-live-update", {
+            detail: { section: e.data.section, data: e.data.data }
+          }));
+        }
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   return (
     <>
-      {/* Full Screen Hardware-Accelerated Glassmorphism Blur Loader */}
-      {!isLoaded && <PageLoader onLoadingComplete={handleLoadingComplete} />}
+      {/* Full Screen Blur Loader */}
+      {!isLoaded && <PageLoader onLoadingComplete={() => setLoaderFinished(true)} />}
 
       {/* 3D Background Canvas Layer */}
       <div style={{ display: isProductPage ? "none" : "block" }}>
@@ -256,9 +289,7 @@ export default function App() {
       {isProductPage && activeProduct ? (
         <ProductDetails project={activeProduct} />
       ) : (
-        /* Main Website Content */
         <div className="relative text-white font-body min-h-screen overflow-x-hidden">
-          {/* Site-wide Floating Ally Ping-Pong Ball rendered behind z-10 section content */}
           <FloatingAllyBall />
 
           <div className="relative z-10">
@@ -266,9 +297,8 @@ export default function App() {
 
             {isDesktop ? (
               <div ref={triggerRef} className="relative">
-                {/* Absolute scroll markers to generate scroll space and enable native browser anchor hash routing */}
-                <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: `${sections.length * 100}vh` }}>
-                  {sections.map((sec) => (
+                <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: `${scrollySections.length * 100}vh` }}>
+                  {scrollySections.map((sec) => (
                     <div
                       key={sec.id}
                       id={sec.id}
@@ -277,13 +307,12 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Pinned section viewport container */}
                 <div 
                   ref={containerRef} 
                   className="w-full h-screen overflow-hidden relative"
                   style={{ clipPath: "inset(80px 0px 0px 0px)", transformStyle: "preserve-3d" }}
                 >
-                  {sections.map((sec) => (
+                  {scrollySections.map((sec) => (
                     <div key={sec.id} className="scrolly-section">
                       {sec.component}
                     </div>
@@ -293,40 +322,75 @@ export default function App() {
             ) : (
               // Mobile vertical scrolling fallback
               <>
-                <Hero />
-                <DepthSection fromZ={-100} toZ={70}>
-                  <Services />
-                </DepthSection>
-                <DepthSection fromZ={-80} toZ={60}>
-                  <Work />
-                </DepthSection>
-                <DepthSection fromZ={-90} toZ={70}>
-                  <Stack />
-                </DepthSection>
-                <DepthSection fromZ={70} toZ={-70}>
-                  <WhyAllySoft />
-                </DepthSection>
-                <DepthSection fromZ={-90} toZ={70}>
-                  <HowWeWork />
-                </DepthSection>
-                <DepthSection fromZ={70} toZ={-70}>
-                  <WhyChooseUs />
-                </DepthSection>
-                <DepthSection fromZ={-90} toZ={70}>
-                  <About />
-                </DepthSection>
-                <DepthSection fromZ={-80} toZ={60}>
-                  <Team />
-                </DepthSection>
+                <div id="home"><Hero /></div>
+                <div id="services">
+                  <DepthSection fromZ={-100} toZ={70}>
+                    <Services />
+                  </DepthSection>
+                </div>
+                <div id="work">
+                  <DepthSection fromZ={-80} toZ={60}>
+                    <Work />
+                  </DepthSection>
+                </div>
+                <div id="stack">
+                  <DepthSection fromZ={-90} toZ={70}>
+                    <Stack />
+                  </DepthSection>
+                </div>
+                <div id="why-ally">
+                  <DepthSection fromZ={70} toZ={-70}>
+                    <WhyAllySoft />
+                  </DepthSection>
+                </div>
+                <div id="process">
+                  <DepthSection fromZ={-90} toZ={70}>
+                    <HowWeWork />
+                  </DepthSection>
+                </div>
+                <div id="why-choose-us">
+                  <DepthSection fromZ={70} toZ={-70}>
+                    <WhyChooseUs />
+                  </DepthSection>
+                </div>
+                <div id="about">
+                  <DepthSection fromZ={-90} toZ={70}>
+                    <About />
+                  </DepthSection>
+                </div>
+                <div id="team">
+                  <DepthSection fromZ={-80} toZ={60}>
+                    <Team />
+                  </DepthSection>
+                </div>
               </>
             )}
 
-            {/* Contact and Footer rendered in normal document flow below the pinned container on desktop */}
             <Contact />
             <Footer />
           </div>
         </div>
       )}
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router basename={getDynamicBase()}>
+      <Routes>
+        {/* Admin and Auth endpoints */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/recover-password" element={<RecoverPassword />} />
+        <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>} />
+        
+        {/* Public landing page with state provider */}
+        <Route path="/" element={<LandingDataProvider><PublicLandingPage /></LandingDataProvider>} />
+        
+        {/* Fallback redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }

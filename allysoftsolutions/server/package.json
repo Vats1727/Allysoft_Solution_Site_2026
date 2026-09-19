@@ -1,0 +1,10 @@
+{
+  "name": "ally-soft-server",
+  "version": "1.0.0",
+  "description": "PHP REST API server wrapper to boot the PHP development server",
+  "main": "public/index.php",
+  "scripts": {
+    "start": "php -S localhost:8000 -t public",
+    "dev": "php -S localhost:8000 -t public"
+  }
+}

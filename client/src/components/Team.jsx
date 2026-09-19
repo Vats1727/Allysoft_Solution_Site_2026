@@ -3,8 +3,11 @@ import { gsap } from "gsap";
 import { ChevronRight, Globe, Link2, Mail } from "lucide-react";
 import Reveal from "./Reveal";
 import { stopLenis, startLenis } from "../lib/lenis";
+import { useLandingData } from "../context/LandingDataContext";
+import { getImageUrl } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
-const TEAM = [
+const STATIC_TEAM = [
   {
     name: "Vishal Akbari",
     role: "Chief Executive Officer",
@@ -55,6 +58,15 @@ const TEAM = [
 ];
 
 export default function Team() {
+  const { data } = useLandingData();
+
+  const settings = data?.team_settings?.[0] || {
+    badge: "The people behind it",
+    title: "Meet Our Team"
+  };
+
+  const teamList = data?.team && data.team.length > 0 ? data.team : STATIC_TEAM;
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [prevIndex, setPrevIndex] = useState(null);
   const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
@@ -66,26 +78,23 @@ export default function Team() {
   const detailsRef = useRef(null);
   const cooldownRef = useRef(false);
 
-  const activeMember = TEAM[selectedIndex];
+  const activeMember = teamList[selectedIndex] || teamList[0] || {};
 
   // Cinematic avatar image load & slide-reveal transition sequence
   useLayoutEffect(() => {
     if (!incomingRef.current || !detailsRef.current) return;
 
-    // Reset previous animations on these elements
     gsap.killTweensOf(incomingRef.current);
     if (outgoingRef.current) gsap.killTweensOf(outgoingRef.current);
     gsap.killTweensOf(detailsRef.current);
 
     const tl = gsap.timeline();
 
-    // 1. Text Details Transition (Quick elegant fade-out and slide-up stagger)
     tl.fromTo(detailsRef.current,
       { opacity: 0, y: 15 },
       { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
     );
 
-    // 2. Image Slide Parallax Mask Animation
     if (prevIndex !== null && outgoingRef.current) {
       const shiftPercent = 100 * direction;
       
@@ -105,21 +114,20 @@ export default function Team() {
         { xPercent: -shiftPercent, scale: 0.95, duration: 0.75, ease: "power3.inOut" }
       );
     } else {
-      // Initial mount render
       gsap.fromTo(incomingRef.current,
         { opacity: 0, scale: 1.1 },
         { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }
       );
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, activeMember]);
 
   // Handle slide transitions with direction calculations
   const changeMember = (currentIndex, newIndex) => {
     if (cooldownRef.current) return;
 
     let dir = 1;
-    if (newIndex === 0 && currentIndex === TEAM.length - 1) dir = 1;
-    else if (newIndex === TEAM.length - 1 && currentIndex === 0) dir = -1;
+    if (newIndex === 0 && currentIndex === teamList.length - 1) dir = 1;
+    else if (newIndex === teamList.length - 1 && currentIndex === 0) dir = -1;
     else dir = newIndex > currentIndex ? 1 : -1;
 
     setDirection(dir);
@@ -129,7 +137,7 @@ export default function Team() {
     cooldownRef.current = true;
     setTimeout(() => {
       cooldownRef.current = false;
-    }, 750); // matching animation length
+    }, 750);
   };
 
   const selectedIndexRef = useRef(0);
@@ -140,7 +148,6 @@ export default function Team() {
   // Global window wheel scroll listener to change cards on mouse scroll cursor-independently
   useEffect(() => {
     const handleGlobalWheel = (e) => {
-      // Only scroll team members when cursor is hovering over the card box
       const isHoveringCard = cardRef.current && cardRef.current.contains(e.target);
       if (!isHoveringCard) return;
 
@@ -153,17 +160,14 @@ export default function Team() {
 
       const dir = e.deltaY > 0 ? 1 : -1;
 
-      // If scrolling UP on first member, let event bubble to scroll up page
       if (dir === -1 && selectedIndexRef.current === 0) {
         return;
       }
 
-      // If scrolling DOWN on last member, let event bubble to scroll to next section
-      if (dir === 1 && selectedIndexRef.current === TEAM.length - 1) {
+      if (dir === 1 && selectedIndexRef.current === teamList.length - 1) {
         return;
       }
 
-      // Intercept scroll event completely to cycle between members
       e.preventDefault();
       e.stopPropagation();
 
@@ -171,7 +175,7 @@ export default function Team() {
       if (Math.abs(e.deltaY) < 18) return;
 
       const nextIndex = selectedIndexRef.current + dir;
-      if (nextIndex >= 0 && nextIndex < TEAM.length) {
+      if (nextIndex >= 0 && nextIndex < teamList.length) {
         changeMember(selectedIndexRef.current, nextIndex);
       }
     };
@@ -180,15 +184,25 @@ export default function Team() {
     return () => {
       window.removeEventListener("wheel", handleGlobalWheel, { capture: true });
     };
-  }, []);
+  }, [teamList]);
+
+  // Adjust active index range if database list changes
+  useEffect(() => {
+    if (selectedIndex >= teamList.length) {
+      setSelectedIndex(0);
+      selectedIndexRef.current = 0;
+    }
+  }, [teamList]);
 
   const nextMember = () => {
-    changeMember(selectedIndex, (selectedIndex + 1) % TEAM.length);
+    changeMember(selectedIndex, (selectedIndex + 1) % teamList.length);
   };
 
   const prevMember = () => {
-    changeMember(selectedIndex, (selectedIndex - 1 + TEAM.length) % TEAM.length);
+    changeMember(selectedIndex, (selectedIndex - 1 + teamList.length) % teamList.length);
   };
+
+  const outgoingMember = prevIndex !== null ? teamList[prevIndex] : null;
 
   return (
     <section
@@ -198,13 +212,15 @@ export default function Team() {
       style={{ perspective: "1200px" }}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 w-full">
-        <Reveal y={30} className="mb-10">
-          <div className="max-w-xl">
-            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">The people behind it</p>
-            <h2 className="font-display text-3xl sm:text-5xl font-bold">Meet Our Team</h2>
-            <p className="text-slate-100 mt-4 text-sm sm:text-base">
-              Meet the software engineers, cloud architects, and product builders dedicated to delivering elite code.
+        <Reveal y={30} className="mb-10 relative">
+          <VisualEditorTrigger sectionPath="/admin/team_settings" />
+          <div className="max-w-xl text-left">
+            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+              {settings.badge}
             </p>
+            <h2 className="font-display text-3xl sm:text-5xl font-bold">
+              {settings.title}
+            </h2>
           </div>
         </Reveal>
 
@@ -212,28 +228,30 @@ export default function Team() {
         <div className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center">
           <div
             ref={cardRef}
-            className="w-full bg-panel border border-line rounded-3xl p-8 sm:p-12 shadow-[0_30px_90px_-20px_rgba(0,0,0,0.7)] overflow-hidden"
+            className="w-full bg-panel border border-line rounded-3xl p-8 sm:p-12 shadow-[0_30px_90px_-20px_rgba(0,0,0,0.7)] overflow-hidden relative"
           >
+            <VisualEditorTrigger sectionPath="/admin/team" />
+            
             <div className="grid md:grid-cols-2 gap-12 sm:gap-16 items-center">
               {/* Left Column: Portrait Avatar Image with Parallax Slide Mask */}
               <div 
                 className="relative w-full aspect-square max-h-[50vh] rounded-2xl border border-line overflow-hidden bg-void shadow-2xl"
               >
                 {/* Outgoing Image */}
-                {prevIndex !== null && (
+                {outgoingMember && (
                   <div
                     key={`out-${prevIndex}`}
                     ref={outgoingRef}
                     className="absolute inset-0 w-full h-full"
                   >
                     <img 
-                      src={TEAM[prevIndex].image} 
+                      src={getImageUrl(outgoingMember.image)} 
                       alt="Outgoing" 
                       className="w-full h-full object-cover" 
                       style={{ 
-                        objectPosition: TEAM[prevIndex].objectPosition || "center top",
-                        transform: TEAM[prevIndex].scale ? `scale(${TEAM[prevIndex].scale})` : undefined,
-                        transformOrigin: TEAM[prevIndex].transformOrigin || "center top"
+                        objectPosition: outgoingMember.object_position || outgoingMember.objectPosition || "center top",
+                        transform: outgoingMember.scale ? `scale(${outgoingMember.scale})` : undefined,
+                        transformOrigin: outgoingMember.transform_origin || outgoingMember.transformOrigin || "center top"
                       }}
                     />
                   </div>
@@ -246,13 +264,13 @@ export default function Team() {
                   className="absolute inset-0 w-full h-full"
                 >
                   <img 
-                    src={activeMember.image} 
+                    src={getImageUrl(activeMember.image)} 
                     alt={activeMember.name} 
                     className="w-full h-full object-cover" 
                     style={{ 
-                      objectPosition: activeMember.objectPosition || "center top",
+                      objectPosition: activeMember.object_position || activeMember.objectPosition || "center top",
                       transform: activeMember.scale ? `scale(${activeMember.scale})` : undefined,
-                      transformOrigin: activeMember.transformOrigin || "center top"
+                      transformOrigin: activeMember.transform_origin || activeMember.transformOrigin || "center top"
                     }}
                   />
                 </div>
@@ -263,45 +281,49 @@ export default function Team() {
               </div>
 
               {/* Right Column: Member Details */}
-              <div ref={detailsRef}>
+              <div ref={detailsRef} className="text-left">
                 <h3 className="font-display text-2xl sm:text-4xl font-bold">{activeMember.name}</h3>
                 <p className="text-gold text-base sm:text-lg font-semibold mt-1.5">{activeMember.role}</p>
-                <p className="text-slate-100 mt-4 leading-relaxed text-sm sm:text-base">{activeMember.bio}</p>
+                <p className="text-slate-100 mt-4 leading-relaxed text-sm sm:text-base font-light">{activeMember.bio}</p>
                 <div className="flex items-center gap-4 mt-8">
-                  <a href="#contact" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
+                  <a href="#contact" aria-label="Member Website" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
                     <Globe size={18} />
                   </a>
-                  <a href="#contact" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
+                  <a href="#contact" aria-label="Member Profile" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
                     <Link2 size={18} />
                   </a>
-                  <a href="#contact" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
+                  <a href="#contact" aria-label="Contact Member" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-mist hover:text-gold hover:border-gold/40 transition-colors">
                     <Mail size={18} />
                   </a>
-                  <button
-                    onClick={nextMember}
-                    aria-label="Next Member"
-                    className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-white hover:text-gold hover:border-gold/40 transition-colors ml-auto shrink-0 animate-pulse"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
+                  {teamList.length > 1 && (
+                    <button
+                      onClick={nextMember}
+                      aria-label="Next Member"
+                      className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-white hover:text-gold hover:border-gold/40 transition-colors ml-auto shrink-0 animate-pulse"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Slide progress indicators (Tab Guide) */}
-          <div className="mt-10 flex justify-center gap-3 select-none">
-            {TEAM.map((_, idx) => (
-              <span
-                key={idx}
-                className={`block h-1.5 rounded-full transition-all duration-300 ${
-                  idx === selectedIndex
-                    ? "w-8 bg-gold shadow-[0_0_8px_rgba(245,166,35,0.6)]"
-                    : "w-2 bg-line"
-                }`}
-              />
-            ))}
-          </div>
+          {/* Slide progress indicators */}
+          {teamList.length > 1 && (
+            <div className="mt-10 flex justify-center gap-3 select-none">
+              {teamList.map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`block h-1.5 rounded-full transition-all duration-300 ${
+                    idx === selectedIndex
+                      ? "w-8 bg-gold shadow-[0_0_8px_rgba(245,166,35,0.6)]"
+                      : "w-2 bg-line"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

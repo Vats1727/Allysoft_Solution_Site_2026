@@ -4,12 +4,26 @@ import { ArrowUpRight, ChevronRight, Play } from "lucide-react";
 import { initGsap, reveal } from "../lib/engine";
 import Reveal from "./Reveal";
 import { stopLenis, startLenis } from "../lib/lenis";
+import { useLandingData } from "../context/LandingDataContext";
+import { getImageUrl } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
+
+// Static fallback data
+import { PROJECTS as STATIC_PROJECTS } from "../data/projects";
 
 initGsap();
 
-import { PROJECTS } from "../data/projects";
-
 export default function Work() {
+  const { data } = useLandingData();
+  
+  const settings = data?.work_settings?.[0] || {
+    badge: "Our work",
+    title: "Projects We've Shipped",
+    description: "A showcase of custom digital products, secure cloud systems, and high-performance applications built for operational impact."
+  };
+
+  const projectsList = data?.projects && data.projects.length > 0 ? data.projects : STATIC_PROJECTS;
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [prevIndex, setPrevIndex] = useState(null);
   const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
@@ -22,7 +36,7 @@ export default function Work() {
   const detailsRef = useRef(null);
   const cooldownRef = useRef(false);
 
-  const activeProject = PROJECTS[selectedIndex];
+  const activeProject = projectsList[selectedIndex] || projectsList[0] || {};
 
   useLayoutEffect(() => {
     const tween = reveal(headRef.current, { y: 30, duration: 0.9 });
@@ -33,7 +47,6 @@ export default function Work() {
   useLayoutEffect(() => {
     if (!incomingRef.current || !detailsRef.current) return;
 
-    // Reset previous animations on these elements
     gsap.killTweensOf(incomingRef.current);
     if (outgoingRef.current) gsap.killTweensOf(outgoingRef.current);
     gsap.killTweensOf(detailsRef.current);
@@ -72,15 +85,15 @@ export default function Work() {
         { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }
       );
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, activeProject]);
 
   // Handle slide transitions with direction calculations
   const changeProject = (currentIndex, newIndex) => {
     if (cooldownRef.current) return;
 
     let dir = 1;
-    if (newIndex === 0 && currentIndex === PROJECTS.length - 1) dir = 1;
-    else if (newIndex === PROJECTS.length - 1 && currentIndex === 0) dir = -1;
+    if (newIndex === 0 && currentIndex === projectsList.length - 1) dir = 1;
+    else if (newIndex === projectsList.length - 1 && currentIndex === 0) dir = -1;
     else dir = newIndex > currentIndex ? 1 : -1;
 
     setDirection(dir);
@@ -90,7 +103,7 @@ export default function Work() {
     cooldownRef.current = true;
     setTimeout(() => {
       cooldownRef.current = false;
-    }, 750); // matching animation length
+    }, 750);
   };
 
   const selectedIndexRef = useRef(0);
@@ -101,7 +114,6 @@ export default function Work() {
   // Global window wheel scroll listener to change cards on mouse scroll cursor-independently
   useEffect(() => {
     const handleGlobalWheel = (e) => {
-      // Only scroll projects when cursor is hovering over the card box
       const isHoveringCard = cardRef.current && cardRef.current.contains(e.target);
       if (!isHoveringCard) return;
 
@@ -110,7 +122,6 @@ export default function Work() {
 
       const rect = section.getBoundingClientRect();
 
-      // Reset active index to 0 when scrolled out of viewport
       if (rect.top > window.innerHeight - 50 || rect.bottom < 50) {
         if (selectedIndexRef.current !== 0) {
           setSelectedIndex(0);
@@ -123,17 +134,14 @@ export default function Work() {
 
       const dir = e.deltaY > 0 ? 1 : -1;
 
-      // If scrolling UP on first project, let event bubble to scroll up page
       if (dir === -1 && selectedIndexRef.current === 0) {
         return;
       }
 
-      // If scrolling DOWN on last project, let event bubble to scroll to next section
-      if (dir === 1 && selectedIndexRef.current === PROJECTS.length - 1) {
+      if (dir === 1 && selectedIndexRef.current === projectsList.length - 1) {
         return;
       }
 
-      // Intercept the scroll event completely to cycle between projects
       e.preventDefault();
       e.stopPropagation();
 
@@ -141,7 +149,7 @@ export default function Work() {
       if (Math.abs(e.deltaY) < 18) return;
 
       const nextIndex = selectedIndexRef.current + dir;
-      if (nextIndex >= 0 && nextIndex < PROJECTS.length) {
+      if (nextIndex >= 0 && nextIndex < projectsList.length) {
         changeProject(selectedIndexRef.current, nextIndex);
       }
     };
@@ -150,15 +158,23 @@ export default function Work() {
     return () => {
       window.removeEventListener("wheel", handleGlobalWheel, { capture: true });
     };
-  }, []);
+  }, [projectsList]);
+
+  // Adjust active index range if database list changes
+  useEffect(() => {
+    if (selectedIndex >= projectsList.length) {
+      setSelectedIndex(0);
+      selectedIndexRef.current = 0;
+    }
+  }, [projectsList]);
 
   const nextProject = () => {
-    changeProject(selectedIndex, (selectedIndex + 1) % PROJECTS.length);
+    changeProject(selectedIndex, (selectedIndex + 1) % projectsList.length);
   };
 
-  const prevProject = () => {
-    changeProject(selectedIndex, (selectedIndex - 1 + PROJECTS.length) % PROJECTS.length);
-  };
+  const tags = Array.isArray(activeProject.tags) 
+    ? activeProject.tags 
+    : (typeof activeProject.tags === "string" ? JSON.parse(activeProject.tags) : []);
 
   return (
     <section
@@ -168,12 +184,17 @@ export default function Work() {
       style={{ perspective: "1200px" }}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 w-full">
-        <div ref={headRef} className="mb-10">
-          <div className="max-w-xl">
-            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">Our work</p>
-            <h2 className="font-display text-3xl sm:text-5xl font-bold">Projects We've Shipped</h2>
+        <div ref={headRef} className="mb-10 relative">
+          <VisualEditorTrigger sectionPath="/admin/work_settings" />
+          <div className="max-w-xl text-left">
+            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+              {settings.badge}
+            </p>
+            <h2 className="font-display text-3xl sm:text-5xl font-bold">
+              {settings.title}
+            </h2>
             <p className="text-mist mt-4 text-sm sm:text-base">
-              A showcase of custom digital products, secure cloud systems, and high-performance applications built for operational impact.
+              {settings.description}
             </p>
           </div>
         </div>
@@ -181,14 +202,15 @@ export default function Work() {
         <div className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center">
           <div
             ref={cardRef}
-            className="w-full bg-panel border border-line rounded-3xl p-6 sm:p-8 xl:p-10 shadow-[0_30px_90px_-20px_rgba(0,0,0,0.7)] overflow-hidden"
+            className="w-full bg-panel border border-line rounded-3xl p-6 sm:p-8 xl:p-10 shadow-[0_30px_90px_-20px_rgba(0,0,0,0.7)] overflow-hidden relative"
           >
+            <VisualEditorTrigger sectionPath="/admin/projects" />
+            
             <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-              {/* Left Column: Portrait/Aspect Image with Parallax Slide Mask */}
+              {/* Left Column: Image with Parallax Slide Mask */}
               <div 
                 className="relative w-full aspect-[1024/489] rounded-2xl border border-line overflow-hidden bg-void shadow-2xl"
               >
-                {/* Clickable project link */}
                 <a
                   href={`#product/${activeProject.slug}`}
                   onClick={(e) => {
@@ -200,14 +222,14 @@ export default function Work() {
                   aria-label={`View ${activeProject.title} details`}
                 >
                   {/* Outgoing Image */}
-                  {prevIndex !== null && (
+                  {prevIndex !== null && projectsList[prevIndex] && (
                     <div
                       key={`out-${prevIndex}`}
                       ref={outgoingRef}
                       className="absolute inset-0 w-full h-full"
                     >
                       <img 
-                        src={PROJECTS[prevIndex].image} 
+                        src={getImageUrl(projectsList[prevIndex].image)} 
                         alt="Outgoing" 
                         className="w-full h-full object-cover" 
                       />
@@ -221,7 +243,7 @@ export default function Work() {
                     className="absolute inset-0 w-full h-full"
                   >
                     <img 
-                      src={activeProject.image} 
+                      src={getImageUrl(activeProject.image)} 
                       alt={activeProject.title} 
                       className="w-full h-full object-cover" 
                     />
@@ -230,19 +252,19 @@ export default function Work() {
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent z-10" />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                     <span className="w-14 h-14 rounded-full bg-gold/90 text-ink flex items-center justify-center shadow-[0_0_40px_rgba(245,166,35,0.5)]">
-                      {activeProject.video ? <Play size={20} fill="currentColor" /> : <ArrowUpRight size={20} />}
+                      <ArrowUpRight size={20} />
                     </span>
                   </div>
                 </a>
               </div>
 
               {/* Right Column: Project Details */}
-              <div ref={detailsRef}>
+              <div ref={detailsRef} className="text-left">
                 <p className="text-gold text-xs font-semibold tracking-[0.2em] uppercase mb-2">{activeProject.category}</p>
                 <h3 className="font-display text-2xl sm:text-4xl font-bold mb-3">{activeProject.title}</h3>
                 <p className="text-slate-100 leading-relaxed mb-4 text-sm sm:text-base">{activeProject.description}</p>
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {activeProject.tags.map((t) => (
+                  {tags.map((t) => (
                     <span key={t} className="text-xs px-3 py-1.5 rounded-full bg-void border border-line text-slate-200 font-mono">
                       {t}
                     </span>
@@ -260,7 +282,7 @@ export default function Work() {
                   >
                     View Product Details <ArrowUpRight size={16} />
                   </a>
-                  {PROJECTS.length > 1 && (
+                  {projectsList.length > 1 && (
                     <button
                       onClick={nextProject}
                       aria-label="Next Project"
@@ -274,10 +296,10 @@ export default function Work() {
             </div>
           </div>
 
-          {/* Slide progress indicators (Tab Guide) */}
-          {PROJECTS.length > 1 && (
+          {/* Slide progress indicators */}
+          {projectsList.length > 1 && (
             <div className="mt-10 flex justify-center gap-3 select-none">
-              {PROJECTS.map((_, idx) => (
+              {projectsList.map((_, idx) => (
                 <span
                   key={idx}
                   className={`block h-1.5 rounded-full transition-all duration-300 ${

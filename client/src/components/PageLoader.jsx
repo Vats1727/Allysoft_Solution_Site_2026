@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { stopLenis, startLenis } from "../lib/lenis";
+import { getImageUrl } from "../utils/helpers";
 
 /**
  * 3D Perspective Tunnel Canvas — renders a 3D wireframe tunnel with speed lines
@@ -196,7 +197,7 @@ export default function PageLoader({ onLoadingComplete }) {
         <div className="relative mb-8 flex items-center justify-center">
           <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-gold/20 to-amber/30 blur-2xl animate-pulse" />
           <img 
-            src="/logo-white.png" 
+            src={getImageUrl("/logo-white.png")} 
             alt="Ally Soft Solutions Logo" 
             className="h-16 sm:h-20 w-auto object-contain relative z-10" 
           />

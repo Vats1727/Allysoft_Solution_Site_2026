@@ -1,32 +1,50 @@
 import { Check } from "lucide-react";
 import Reveal from "./Reveal";
 import Tilt3D from "./Tilt3D";
-
-const POINTS = [
-  { title: "Founder Led", desc: "A team that thinks like owners, not just ticket-takers — decisions made with technical and business expertise." },
-  { title: "Speed to Market", desc: "We move fast without cutting the corners that come back to bite you later." },
-  { title: "Privacy, Security & Scalability", desc: "Built to protect your data today and hold up as you grow tomorrow." },
-  { title: "AI Ready", desc: "Every build considers where AI can genuinely help, not where it's just a buzzword." },
-  { title: "Transparent Comms", desc: "You always know what's shipped, what's next, and what's blocking it." },
-];
+import { useLandingData } from "../context/LandingDataContext";
+import { getImageUrl } from "../utils/helpers";
+import VisualEditorTrigger from "./Admin/VisualEditorTrigger";
 
 export default function WhyAllySoft() {
+  const { data } = useLandingData();
+
+  const settings = data?.why_ally_section?.[0] || {
+    badge: "Why Ally Soft",
+    title: "Built different, on purpose",
+    image: "/idea-implementation.jpg"
+  };
+
+  const pointsList = data?.why_ally_points && data.why_ally_points.length > 0 ? data.why_ally_points : [
+    { title: "Founder Led", desc: "A team that thinks like owners, not just ticket-takers — decisions made with technical and business expertise." },
+    { title: "Speed to Market", desc: "We move fast without cutting the corners that come back to bite you later." },
+    { title: "Privacy, Security & Scalability", desc: "Built to protect your data today and hold up as you grow tomorrow." },
+    { title: "AI Ready", desc: "Every build considers where AI can genuinely help, not where it's just a buzzword." },
+    { title: "Transparent Comms", desc: "You always know what's shipped, what's next, and what's blocking it." }
+  ];
+
   return (
     <section 
       id="why-ally" 
       className="relative md:h-screen w-full flex items-center justify-center py-24 md:py-0 overflow-hidden backdrop-blur-[2px]"
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 grid md:grid-cols-2 gap-16 items-center w-full">
-        <div className="bg-panel border border-line rounded-3xl p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
+        <div className="bg-panel border border-line rounded-3xl p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md relative text-left">
+          <VisualEditorTrigger sectionPath="/admin/why_ally_section" />
+          
           <Reveal x={-40} className="mb-10">
-            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">Why Ally Soft</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold">Built different, on purpose</h2>
+            <p className="text-gold text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+              {settings.badge}
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold">
+              {settings.title}
+            </h2>
           </Reveal>
 
-          <div className="space-y-1">
-            {POINTS.map((p, i) => (
+          <div className="space-y-1 relative">
+            <VisualEditorTrigger sectionPath="/admin/why_ally_points" />
+            {pointsList.map((p, i) => (
               <Reveal
-                key={p.title}
+                key={p.id || i}
                 x={-30}
                 delay={i * 0.08}
                 duration={0.7}
@@ -48,8 +66,8 @@ export default function WhyAllySoft() {
           <Tilt3D strength={8}>
             <div className="relative aspect-square rounded-3xl bg-panel border border-line overflow-hidden flex flex-col items-center justify-center">
               <img 
-                src="/idea-implementation.jpg" 
-                alt="Idea to Implementation Tech Stack Map" 
+                src={getImageUrl(settings.image)} 
+                alt="Advantage Illustration Map" 
                 className="w-full h-full object-cover relative z-10" 
               />
             </div>
